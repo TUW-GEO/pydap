@@ -35,6 +35,9 @@ from pydap.handlers.lib import get_handler, load_handlers
 from pydap.exceptions import ExtensionNotSupportedError
 from pydap.wsgi.ssf import ServerSideFunctions
 
+import gunicorn.app.base
+from gunicorn.six import iteritems
+
 
 class DapServer(object):
 
@@ -109,7 +112,7 @@ class DapServer(object):
 
         tokens = req.path_info.split("/")[1:]
         breadcrumbs = [{
-            "url": "/".join([req.application_url] + tokens[:i+1]),
+            "url": "/".join([req.application_url] + tokens[:i + 1]),
             "title": token,
         } for i, token in enumerate(tokens) if token]
 
@@ -203,6 +206,22 @@ class StaticMiddleware(object):
             content_encoding=content_encoding)
 
 
+class PydapApplication(gunicorn.app.base.BaseApplication):
+    def __init__(self, app, options=None):
+        self.options = options or {}
+        self.application = app
+        super(PydapApplication, self).__init__()
+
+    def load_config(self):
+        config = dict([(key, value) for key, value in iteritems(self.options)
+                       if key in self.cfg.settings and value is not None])
+        for key, value in iteritems(config):
+            self.cfg.set(key.lower(), value)
+
+    def load(self):
+        return self.application
+
+
 def init(directory):
     """Create directory with default templates."""
     # copy main templates
@@ -222,7 +241,6 @@ def main():  # pragma: no cover
     import multiprocessing
 
     from docopt import docopt
-    from gunicorn.app.pasterapp import paste_server
 
     arguments = docopt(__doc__, version="Pydap %s" % __version__)
 
@@ -245,13 +263,13 @@ def main():  # pragma: no cover
 
     # configure WSGI server
     workers = multiprocessing.cpu_count() * 2 + 1
-    paste_server(
-        app,
-        host=arguments["--bind"],
-        port=int(arguments["--port"]),
-        workers=workers,
-        worker_class=arguments["--worker-class"])
+
+    options = {
+        'bind': '%s:%s' % ('127.0.0.1', '8001'),
+        'workers': workers,
+    }
+    PydapApplication(app, options).run()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
