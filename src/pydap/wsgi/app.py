@@ -207,6 +207,9 @@ class StaticMiddleware(object):
 
 
 class PydapApplication(gunicorn.app.base.BaseApplication):
+    
+    """Inherit from BaseApplication to run Pydap server on Gunicorn"""
+    
     def __init__(self, app, options=None):
         self.options = options or {}
         self.application = app

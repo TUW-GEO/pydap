@@ -63,7 +63,7 @@ def fix_slice(slice_, shape):
     out = []
     for s in slice_:
         if s is Ellipsis:
-            out.extend((slice(None),) * (expand+1))
+            out.extend((slice(None),) * (expand + 1))
             expand = 0
         else:
             out.append(s)
@@ -107,9 +107,9 @@ def combine_slices(slice1, slice2):
     for exp1, exp2 in zip_longest(
             slice1, slice2, fillvalue=slice(None)):
         if isinstance(exp1, int):
-            exp1 = slice(exp1, exp1+1)
+            exp1 = slice(exp1, exp1 + 1)
         if isinstance(exp2, int):
-            exp2 = slice(exp2, exp2+1)
+            exp2 = slice(exp2, exp2 + 1)
 
         start = (exp1.start or 0) + (exp2.start or 0)
         step = (exp1.step or 1) * (exp2.step or 1)
@@ -138,7 +138,7 @@ def hyperslab(slice_):
         slice_.pop(-1)
 
     return ''.join('[%s:%s:%s]' % (
-        s.start or 0, s.step or 1, (s.stop or MAXSIZE)-1) for s in slice_)
+        s.start or 0, s.step or 1, (s.stop or MAXSIZE) - 1) for s in slice_)
 
 
 def walk(var, type=object):
