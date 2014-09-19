@@ -35,7 +35,10 @@ from pydap.handlers.lib import get_handler, load_handlers
 from pydap.exceptions import ExtensionNotSupportedError
 from pydap.wsgi.ssf import ServerSideFunctions
 
+import json
+
 import gunicorn.app.base
+
 from gunicorn.six import iteritems
 
 
@@ -78,6 +81,9 @@ class DapServer(object):
             return HTTPForbidden()
         elif os.path.exists(path):
             if os.path.isdir(path):
+                reqtype_ = req.GET.get('REQUEST', '')
+                if reqtype_.lower() == "GetFileList".lower():
+                    return self.listfiles(path, req)
                 return self.index(path, req)
             else:
                 return FileApp(path)
@@ -128,6 +134,28 @@ class DapServer(object):
         return Response(
             body=template.render(context),
             content_type="text/html",
+            charset="utf-8")
+
+    def listfiles(self, directory, req):
+        """Return all supported files in folder."""
+        content = [
+            os.path.join(directory, name) for name in os.listdir(directory)]
+
+        files = [{
+            "name": os.path.split(path)[1],
+            "size": os.path.getsize(path),
+        } for path in content if (os.path.isfile(path) and supported(path, self.handlers))]
+        files.sort(key=lambda d: alphanum_key(d["name"]))
+
+        context = {
+            "root": req.application_url,
+            "location": req.path_url,
+            "files": files
+        }
+        template = self.env.get_template("index.html")
+        return Response(
+            body=json.dumps(context),
+            content_type="application/json",
             charset="utf-8")
 
 
@@ -207,9 +235,9 @@ class StaticMiddleware(object):
 
 
 class PydapApplication(gunicorn.app.base.BaseApplication):
-    
+
     """Inherit from BaseApplication to run Pydap server on Gunicorn"""
-    
+
     def __init__(self, app, options=None):
         self.options = options or {}
         self.application = app
@@ -223,7 +251,6 @@ class PydapApplication(gunicorn.app.base.BaseApplication):
 
     def load(self):
         return self.application
-
 
 def init(directory):
     """Create directory with default templates."""
@@ -242,7 +269,6 @@ def init(directory):
 def main():  # pragma: no cover
     """Run server from the command line."""
     import multiprocessing
-
     from docopt import docopt
 
     arguments = docopt(__doc__, version="Pydap %s" % __version__)
