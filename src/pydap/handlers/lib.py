@@ -32,9 +32,9 @@ from pydap.model import *
 
 
 # buffer size in bytes, for streaming data
-BUFFER_SIZE = 2**27
+BUFFER_SIZE = 2 ** 27
 
-CORS_RESPONSES = ['dds', 'das', 'dods', 'ver', 'json']
+CORS_RESPONSES = ['dds', 'das', 'dods', 'ver', 'json', 'wms']
 
 
 def load_handlers(working_set=pkg_resources.working_set):
@@ -101,10 +101,10 @@ class BaseHandler(object):
 
             # CORS for Javascript requests
             if response in CORS_RESPONSES:
-                res.headers.add('Access-Control-Allow-Origin', '*')
-                res.headers.add(
-                    'Access-Control-Allow-Headers',
-                    'Origin, X-Requested-With, Content-Type')
+                if 'Access-Control-Allow-Origin' not in res.headers:
+                    res.headers.add('Access-Control-Allow-Origin', '*')
+                if 'Access-Control-Allow-Headers' not in res.headers:   
+                    res.headers.add('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type')
 
             return res(environ, start_response)
         except:
@@ -302,7 +302,7 @@ class IterData(object):
 
     def __copy__(self):
         """Return a lightweight copy of the object."""
-        return IterData(self.stream, copy.copy(self.template), self.ifilter[:], 
+        return IterData(self.stream, copy.copy(self.template), self.ifilter[:],
             self.imap[:], self.islice[:], self.level)
 
     def __repr__(self):
@@ -329,12 +329,12 @@ class IterData(object):
             out.template._original_keys = out.template._keys
             out.template._keys = key
             out.imap.append(deep_map(
-                lambda row: tuple(row[i] for i in cols), out.level+1))
+                lambda row: tuple(row[i] for i in cols), out.level + 1))
 
         # slice the data
         elif isinstance(key, (int, slice)):
             if isinstance(key, int):
-                out.islice.append(slice(key, key+1))
+                out.islice.append(slice(key, key + 1))
             else:
                 out.islice.append(key)
 
@@ -410,7 +410,7 @@ def deep_map(function, level):
         if level == 1:
             return function(row)
         else:
-            return [out(value, level-1) for value in row]
+            return [out(value, level - 1) for value in row]
     return out
 
 
@@ -420,7 +420,7 @@ def build_filter(expression, template):
 
     # calculate the column index were filtering and how deep it is
     try:
-        id1 = id1[len(template.id)+1:]
+        id1 = id1[len(template.id) + 1:]
         target = template
         for level, token in enumerate(id1.split(".")):
             parent1 = target.id

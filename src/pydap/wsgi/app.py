@@ -212,7 +212,15 @@ class StaticMiddleware(object):
     @wsgify
     def __call__(self, req):
         if req.path_info_peek() != "static":
-            return req.get_response(self.app)
+            res = req.get_response(self.app)
+            # Allow Javascript for GetFileList Call
+            reqtype_ = req.GET.get('REQUEST', '')
+            if reqtype_.lower() == "GetFileList".lower():
+                if 'Access-Control-Allow-Origin' not in res.headers:
+                    res.headers.add('Access-Control-Allow-Origin', '*')
+                if 'Access-Control-Allow-Headers' not in res.headers:   
+                    res.headers.add('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type')
+            return res
 
         # strip "/static"
         req.path_info_pop()
