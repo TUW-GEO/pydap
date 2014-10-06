@@ -46,7 +46,7 @@ class DapServer(object):
 
     """A directory app that creates file listings and handle DAP requests."""
 
-    def __init__(self, path, templates=None):
+    def __init__(self, path, templates = None):
         self.path = os.path.abspath(path)
 
         # the default loader reads templates from the package
@@ -60,7 +60,7 @@ class DapServer(object):
 
         # set the rendering environment; this is also used by pydap responses
         # that need to render templates (like HTML, WMS, KML, etc.)
-        self.env = Environment(loader=ChoiceLoader(loaders))
+        self.env = Environment(loader = ChoiceLoader(loaders))
         self.env.filters["datetimeformat"] = datetimeformat
         self.env.filters["unquote"] = unquote
 
@@ -74,6 +74,10 @@ class DapServer(object):
         Returns either a file download, directory listing or DAP response.
 
         """
+#         import sys
+#         sys.path.append("/usr/lib/eclipse/plugins/org.python.pydev_3.5.0.201405201709/pysrc/")
+#         import pydevd
+#         pydevd.settrace()
         path = os.path.abspath(
             os.path.join(self.path, *req.path_info.split("/")))
 
@@ -95,7 +99,7 @@ class DapServer(object):
             app = ServerSideFunctions(get_handler(base, self.handlers))
             return req.get_response(app)
         else:
-            return HTTPNotFound(comment=path)
+            return HTTPNotFound(comment = path)
 
     def index(self, directory, req):
         """Return a directory listing."""
@@ -108,13 +112,13 @@ class DapServer(object):
             "last_modified": datetime.fromtimestamp(os.path.getmtime(path)),
             "supported": supported(path, self.handlers),
         } for path in content if os.path.isfile(path)]
-        files.sort(key=lambda d: alphanum_key(d["name"]))
+        files.sort(key = lambda d: alphanum_key(d["name"]))
 
         directories = [{
             "name": os.path.split(path)[1],
             "last_modified": datetime.fromtimestamp(os.path.getmtime(path)),
         } for path in content if os.path.isdir(path)]
-        directories.sort(key=lambda d: alphanum_key(d["name"]))
+        directories.sort(key = lambda d: alphanum_key(d["name"]))
 
         tokens = req.path_info.split("/")[1:]
         breadcrumbs = [{
@@ -132,9 +136,9 @@ class DapServer(object):
         }
         template = self.env.get_template("index.html")
         return Response(
-            body=template.render(context),
-            content_type="text/html",
-            charset="utf-8")
+            body = template.render(context),
+            content_type = "text/html",
+            charset = "utf-8")
 
     def listfiles(self, directory, req):
         """Return all supported files in folder."""
@@ -145,7 +149,7 @@ class DapServer(object):
             "name": os.path.split(path)[1],
             "size": os.path.getsize(path),
         } for path in content if (os.path.isfile(path) and supported(path, self.handlers))]
-        files.sort(key=lambda d: alphanum_key(d["name"]))
+        files.sort(key = lambda d: alphanum_key(d["name"]))
 
         context = {
             "root": req.application_url,
@@ -154,12 +158,12 @@ class DapServer(object):
         }
         template = self.env.get_template("index.html")
         return Response(
-            body=json.dumps(context),
-            content_type="application/json",
-            charset="utf-8")
+            body = json.dumps(context),
+            content_type = "application/json",
+            charset = "utf-8")
 
 
-def supported(filepath, handlers=None):
+def supported(filepath, handlers = None):
     """Test if a file has a corresponding handler.
 
     Returns a boolean.
@@ -191,7 +195,7 @@ def alphanum_key(s):
     return [tryint(c) for c in re.split('([0-9]+)', s)]
 
 
-def datetimeformat(value, format='%Y-%m-%d %H:%M:%S'):
+def datetimeformat(value, format = '%Y-%m-%d %H:%M:%S'):
     """Return a formatted datetime object."""
     return value.strftime(format)
 
@@ -218,7 +222,7 @@ class StaticMiddleware(object):
             if reqtype_.lower() == "GetFileList".lower():
                 if 'Access-Control-Allow-Origin' not in res.headers:
                     res.headers.add('Access-Control-Allow-Origin', '*')
-                if 'Access-Control-Allow-Headers' not in res.headers:   
+                if 'Access-Control-Allow-Headers' not in res.headers:
                     res.headers.add('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type')
             return res
 
@@ -237,16 +241,16 @@ class StaticMiddleware(object):
 
         content_type, content_encoding = mimetypes.guess_type(resource)
         return Response(
-            body=pkg_resources.resource_string(package, resource),
-            content_type=content_type,
-            content_encoding=content_encoding)
+            body = pkg_resources.resource_string(package, resource),
+            content_type = content_type,
+            content_encoding = content_encoding)
 
 
 class PydapApplication(gunicorn.app.base.BaseApplication):
 
     """Inherit from BaseApplication to run Pydap server on Gunicorn"""
 
-    def __init__(self, app, options=None):
+    def __init__(self, app, options = None):
         self.options = options or {}
         self.application = app
         super(PydapApplication, self).__init__()
@@ -273,13 +277,15 @@ def init(directory):
             "pydap.responses.html", "templates/{0}".format(resource))
         shutil.copy(path, directory)
 
+from beaker.middleware import CacheMiddleware
+
 
 def main():  # pragma: no cover
     """Run server from the command line."""
     import multiprocessing
     from docopt import docopt
 
-    arguments = docopt(__doc__, version="Pydap %s" % __version__)
+    arguments = docopt(__doc__, version = "Pydap %s" % __version__)
 
     # init templates?
     if arguments["--init"]:
@@ -298,6 +304,9 @@ def main():  # pragma: no cover
         static = ("pydap.wsgi", "templates/static")
     app = StaticMiddleware(app, static)
 
+    # start Beaker caching manager
+    app = CacheMiddleware(app, type = 'dbm', data_dir = './cache')
+
     # configure WSGI server
     workers = multiprocessing.cpu_count() * 2 + 1
 
@@ -306,6 +315,7 @@ def main():  # pragma: no cover
         'workers': workers,
     }
     PydapApplication(app, options).run()
+
 
 
 if __name__ == '__main__':
